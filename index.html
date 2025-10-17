@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Blockchain Snake Game</title>
+    <link rel="stylesheet" href="./assets/styles/main.css" />
+    <script
+      src="https://code.jquery.com/jquery-3.5.0.min.js"
+      integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ="
+      crossorigin="anonymous"
+    ></script>
+    <script src="assets/js/phaser.min.js"></script>
+    <script src="assets/js/menu.js"></script>
+    <script src="assets/js/game.js"></script>
+    <script src="assets/js/game_over.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/wallet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    <script src="assets/js/contract.js"></script>
+  </head>
+  <body>
+    <div class="header">
+      <div class="title">Blockchain Snake Game</div>
+      <div class="status">Wallet: <span id="ui-wallet">Not connected</span></div>
+    </div>
+    <h1 align="center">-- Blockchain Snake Game --</h1>
+    <br /><br />
+    <button
+      data-dh-feature="network"
+      data-dh-property-enable="true"
+      class="center"
+      id="connect-btn"
+    >
+      Login Via Metamask
+    </button>
+    <br /><br />
+    <h2 style="color: #44b9fc;">
+      Average Score To Beat:
+      <span
+        style="color: white;"
+        data-dh-feature="customContract"
+        data-dh-property-contract-name="snakegame"
+        data-dh-property-method-name="avgScore"
+        data-dh-property-method-id="000"
+        data-dh-property-outputs="true"
+        data-dh-property-auto-invoke="true"
+      >
+      </span>
+    </h2>
+    <h1 style="color: #44b9fc;">
+      CURRENT GAME POOL:
+      <span
+        style="color: white;"
+        data-dh-feature="customContract"
+        data-dh-property-contract-name="snakegame"
+        data-dh-property-method-name="prizePool"
+        data-dh-property-method-id="001"
+        data-dh-property-outputs="true"
+        data-dh-property-auto-invoke="true"
+        data-dh-modifier-contract-units="wei"
+        data-dh-modifier-display-units="ether"
+      >
+      </span>
+      ETH
+      <span
+        style="display: none;"
+        data-dh-feature="customContract"
+        data-dh-property-contract-name="snakegame"
+        data-dh-property-method-name="newChallenge"
+        data-dh-property-method-id="002"
+
+      >
+      </span>
+      <input 
+        type="text"
+        style="display:none;"
+        data-dh-property-method-id="002"
+        data-dh-property-input-name="EthValue"
+        value="0.001"
+        id="deposit-amount"
+      />
+      <button
+        style="margin-left: 12em; border-radius: 0.5em; cursor: pointer;"
+        data-dh-property-method-id="002"
+        data-dh-property-invoke="true"
+        id="deposit-btn"
+      >
+        Deposit .001 ETH and PLAY!
+      </button>
+
+      <span
+        style="display: none;"
+        data-dh-feature="customContract"
+        data-dh-property-contract-name="snakegame"
+        data-dh-property-method-name="userChallenge"
+        data-dh-property-method-id="003"
+        data-dh-property-auto-invoke="true"
+      ></span>
+      <input
+        style="display: none;"
+        data-dh-property-method-id="003"
+        data-dh-property-input-name="[0]"
+        value="$CURRENT_USER"
+      />
+      <button
+        id="get-status-btn"
+        style="display: none"
+        data-dh-property-method-id="003"
+        data-dh-property-invoke="true"
+      >
+        Get Status
+      </button>
+      <div
+        id="status"
+        style="display: none;"
+        data-dh-property-method-id="003"
+        data-dh-property-output-name="status"
+      >STATUS</div>
+      <span
+        style="display: none;"
+        data-dh-feature="customContract"
+        data-dh-property-contract-name="snakegame"
+        data-dh-property-method-name="claim"
+        data-dh-property-method-id="004"
+      >
+      </span>
+      <input
+        id="claim-input"
+        style="display: none;"
+        data-dh-property-method-id="004"
+        data-dh-property-input-name="_score"
+      />
+      <button
+        id="claim-button"
+        style="
+          display: none;
+          margin-left: 12em;
+          border-radius: 0.5em;
+          cursor: pointer;
+        "
+        data-dh-property-method-id="004"
+        data-dh-property-invoke="true"
+      >
+        Claim Prize
+      </button>
+    </h1>
+
+    <script
+      src="https://package.dapphero.io/main.js"
+      id="dh-apiKey"
+      data-api="1588249591666x844795094684139500"
+    ></script>
+    <script>
+      // Fallback connect in case DappHero is unavailable
+      document.getElementById('connect-btn').addEventListener('click', async function(){
+        const ok = await window.connectWallet?.();
+        if (ok) {
+          window.__walletConnected = true;
+          try {
+            const acc = await window.getCurrentAccount?.();
+            if (acc) document.getElementById('ui-wallet').textContent = acc;
+          } catch(e) {}
+        }
+      });
+
+      function getStatus() {
+        // Prefer DappHero-provided status if present, otherwise use wallet flag
+        var dh = $("#status").text();
+        if (dh && dh !== "STATUS") return dh;
+        return window.__walletConnected ? "true" : "false";
+      }
+
+      function claimPrize(_score) {
+        $("#claim-input").val(_score)
+        $("#claim-button").show();
+      }
+
+      // Wire deposit and claim buttons to on-chain fallback if DappHero actions don't appear
+      document.getElementById('deposit-btn').addEventListener('click', async function(){
+        try {
+          var amt = document.getElementById('deposit-amount').value || '0.001';
+          await window.contractStartChallenge?.(amt);
+          // After tx, trigger status refresh to allow starting game
+          document.getElementById('get-status-btn').click?.();
+          alert('Deposit transaction sent. After confirmation, press the menu to start.');
+        } catch (e) {
+          console.error(e);
+          alert('Deposit failed: ' + (e?.message || e));
+        }
+      });
+
+      document.getElementById('claim-button').addEventListener('click', async function(){
+        var scoreStr = document.getElementById('claim-input').value || '0';
+        var score = parseInt(scoreStr, 10) || 0;
+        try {
+          await window.contractClaim?.(score);
+          alert('Claim transaction sent. Check MetaMask for status.');
+        } catch (e) {
+          console.error(e);
+          alert('Claim failed: ' + (e?.message || e));
+        }
+      });
+    </script>
+  </body>
+</html>
